@@ -35,14 +35,32 @@ def make_pair(mint, pair_addr=None, price=1.0, liq=100_000.0, age_min=120.0, h1=
             "volume": {"h1": vol_h1}, "pairCreatedAt": int((now - age_min * 60) * 1000)}
 
 
-def make_rug(mint, pair_addr=None, mint_auth=None, freeze=None, lp=100.0, holders=None, rugged=False):
+TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+SPL_TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+
+
+def clean_extensions():
+    """Token-2022 `token_extensions` as RugCheck returns them for a clean pump.fun mint."""
+    return {"nonTransferable": False, "transferFeeConfig": None, "defaultAccountState": None,
+            "permanentDelegate": None, "metadataPointer": {"authority": None, "metadataAddress": "X"},
+            "groupPointer": None, "groupMemberPointer": None, "tokenMetadata": {"authority": None},
+            "mintCloseAuthority": None, "confidentialTransferMint": None, "interestBearingConfig": None,
+            "transferHook": None, "confidentialTransferFeeConfig": None, "tokenGroup": None,
+            "tokenGroupMember": None, "scaledUiAmountConfig": None, "pausableConfig": None}
+
+
+def make_rug(mint, pair_addr=None, mint_auth=None, freeze=None, lp=100.0, holders=None, rugged=False,
+             program=TOKEN_2022, ext=None):
     pa = pair_addr or f"POOL_{mint}"
     holders = holders if holders is not None else [2.0] * 10
     th = [{"address": f"ACC{i}", "owner": f"OWN{i}", "pct": p, "insider": False} for i, p in enumerate(holders)]
     th.insert(0, {"address": "POOLVAULT", "owner": pa, "pct": 40.0})  # AMM pool: must be excluded
     return {"mint": mint, "mintAuthority": mint_auth, "freezeAuthority": freeze, "rugged": rugged,
             "markets": [{"pubkey": pa, "lp": {"lpLockedPct": lp, "lpLockedUSD": 1e5}}],
-            "topHolders": th, "knownAccounts": {pa: {"name": "Pump Fun AMM", "type": "AMM"}}}
+            "topHolders": th, "knownAccounts": {pa: {"name": "Pump Fun AMM", "type": "AMM"}},
+            "tokenProgram": program,
+            "token_extensions": (None if program == SPL_TOKEN else clean_extensions()) if ext is None else ext,
+            "transferFee": {"pct": 0, "maxAmount": 0, "authority": "11111111111111111111111111111111"}}
 
 
 def gecko_trade(wallet, kind, mint, price, ts, tx, usd=100.0):

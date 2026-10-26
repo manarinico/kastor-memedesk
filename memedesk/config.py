@@ -9,7 +9,7 @@ import hashlib
 import json
 import os
 
-RULES_VERSION = "rules-2026.10.26-r6"  # r6: desk position caps (4% per token, 20% total open, Gambler+Spy); r2: re-price before entry, Gecko tracking pools 5->4; r3: baseline candidates re-priced too; r4: explicit already_holding gate; r5: equity = liquidation value (sell fill at mark liquidity)
+RULES_VERSION = "rules-2026.10.26-r7"  # r7: Scout gates v1.1 - Token-2022 transfer_fee (>0 bps or fee authority set = BLOCK) + transfer_restriction (permanentDelegate, transferHook program set, defaultAccountState frozen, nonTransferable, pausable, mintCloseAuthority = BLOCK); missing ext field = INSUFF (token2022_ext); r6: desk position caps (4% per token, 20% total open, Gambler+Spy); r2: re-price before entry, Gecko tracking pools 5->4; r3: baseline candidates re-priced too; r4: explicit already_holding gate; r5: equity = liquidation value (sell fill at mark liquidity)
 
 DEFAULT_CONFIG = {
     "rules_version": RULES_VERSION,
@@ -25,6 +25,7 @@ DEFAULT_CONFIG = {
         "max_rug_checks_per_cycle": 25,   # RugCheck politeness budget
         "rug_report_max_age_s": 1800,     # reuse a RugCheck report for up to 30 min
         "max_snapshot_age_s": 120,        # per-token stale gate
+        "max_transfer_fee_bps": 0.0,      # r7 hard gate: Token-2022 transfer fee (from token_extensions)
     },
     "gambler": {
         "risk_pct": 0.02,                 # size = 2% of CURRENT desk equity

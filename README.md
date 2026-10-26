@@ -36,6 +36,15 @@ skipped and the reason is logged.
 * freeze authority revoked
 * LP ≥ 95% burned or locked on the traded market
 * top-10 holders own < 30%. Pool and AMM vault accounts are excluded, because counting them would reject every coin.
+* **v1.1 (rules r7, 2026-10-26): Token-2022 extensions**, read from RugCheck's `token_extensions`
+  (never its top-level `transferFee.pct`, which reads 0 for a 300 bps token). Legacy SPL (`Tokenkeg…`) is unchanged;
+  a missing or unknown `tokenProgram`, missing `token_extensions`, or any missing extension field on a
+  Token-2022 mint is INSUFFICIENT_DATA (`token2022_ext`).
+  * `transfer_fee`: BLOCK if newer or older `transferFeeBasisPoints` > 0, or if `transferFeeConfigAuthority` is still set (fee can be raised later), even at 0 bps.
+  * `transfer_restriction`: BLOCK on `permanentDelegate`, `transferHook` with a program id set, `defaultAccountState` = frozen,
+    `nonTransferable`, `pausableConfig` (authority set or paused), or `mintCloseAuthority` set.
+  * Not covered: legacy-SPL or pool-level honeypots and hook-less sell taxes (needs a sell simulation).
+  * Replay check: `.venv/bin/python scripts/replay_scout_v11.py`. The no-filter baseline book does not run these gates.
 
 ### Gambler signal (from DexScreener's pair data)
 Enter when **all** of these hold:
