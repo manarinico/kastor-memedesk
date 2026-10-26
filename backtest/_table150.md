@@ -1,0 +1,8 @@
+| Run | Start → End | Net P&L $ (%) | Trades | Win rate | Avg win / avg loss $ | Max DD | Total costs $ (DEX fee / network fee / slippage) | P&L before costs $ | Best trade | Worst trade |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Desk (gated) – full window | $150 → $121.49 | -28.51 (-19.0%) | 184 | 25% | +1.02 / -0.55 | 21.0% | 26.41 (2.99 / 18.40 / 5.02) | -2.15 | BLACKTOBER +5.60 (+207%, take_profit) | NODF -2.65 (-102%, liquidity_drop) |
+| Desk (gated) – dev (first 70%) | $150 → $134.26 | -15.74 (-10.5%) | 60 | 15% | +1.18 / -0.52 | 12.7% | 8.68 (1.00 / 6.00 / 1.68) | -7.25 | VEIL +3.86 (+129%, take_profit) | VEIL -0.99 (-32%, stop_loss) |
+| Desk (gated) – held-out (last 30%) | $150 → $134.35 | -15.65 (-10.4%) | 129 | 30% | +1.13 / -0.64 | 15.8% | 19.13 (2.32 / 12.90 / 3.91) | +3.56 | BLACKTOBER +6.35 (+207%, take_profit) | MI -3.02 (-101%, liquidity_drop) |
+| Baseline (no gates) – full window | $150 → $87.19 | -62.81 (-41.9%) | 402 | 23% | +0.87 / -0.47 | 43.5% | 54.91 (5.49 / 40.20 / 9.22) | -8.10 | Kimchi +7.05 (+314%, take_profit) | GTA 6 -1.91 (-102%, stop_loss) |
+| Baseline (no gates) – dev (first 70%) | $150 → $115.26 | -34.74 (-23.2%) | 168 | 19% | +1.02 / -0.49 | 27.1% | 23.75 (2.59 / 16.80 / 4.36) | -11.29 | Kimchi +7.05 (+314%, take_profit) | ETCHY -1.68 (-55%, stop_loss) |
+| Baseline (no gates) – held-out (last 30%) | $150 → $122.21 | -27.79 (-18.5%) | 230 | 28% | +1.08 / -0.58 | 21.3% | 33.44 (3.88 / 23.00 / 6.56) | +5.80 | Moustache +8.04 (+274%, take_profit) | GTA 6 -2.63 (-102%, stop_loss) |

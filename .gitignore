@@ -1,0 +1,26 @@
+# never commit state, envs, or anything credential-like
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+backups/
+*.bak*
+*.sqlite
+*.sqlite-*
+*.db
+.env
+.env.*
+*.pem
+*.key
+*credentials*
+*secret*
+*token*
+hosts.yml
+# backtest data/cache/logs stay on the box (code + scorecard are committed)
+backtest/cache/
+backtest/replay_side/
+backtest/*.log
+backtest/*.json
+backtest/*.csv
