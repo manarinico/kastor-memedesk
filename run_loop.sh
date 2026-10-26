@@ -5,6 +5,12 @@
 # - python appends its own timestamped result/failure lines to data/cron.log; stderr
 #   (tracebacks) goes there too; this script logs start/end with exit code around each cycle.
 cd /workspace/memedesk
+# RETIRED 2026-10-26 11:19:25 EDT: GitHub Actions (manarinico/kastor-memedesk) is the only writer.
+# Running this loop as well would fork the desk state. Override only on purpose.
+if [ "${MEMEDESK_ALLOW_BOX_LOOP:-0}" != 1 ]; then
+  echo "run_loop.sh is retired: the desk runs on GitHub Actions. Use ./pull_state.sh to read state." >&2
+  exit 3
+fi
 while true; do
   echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] loop: cycle start (loop pid $$, uptime $(cut -d' ' -f1 /proc/uptime)s)" >> data/cron.log
   flock -n -E 75 data/.lock timeout -k 30 600 .venv/bin/python -m memedesk run_cycle >/dev/null 2>> data/cron.log

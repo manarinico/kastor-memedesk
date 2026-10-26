@@ -1,5 +1,11 @@
 # memedesk — a paper-trading memecoin desk (Solana)
 
+> **Primary runner is GitHub Actions; box loop is retired; run pull_state.sh before reading.**
+> Since 2026-10-26 11:19:25 EDT (15:19:25 UTC) the only writer is the workflow
+> [`desk cycle`](.github/workflows/cycle.yml) in https://github.com/manarinico/kastor-memedesk.
+> On the box: `cd /workspace/memedesk && ./pull_state.sh` before reading `data/memedesk.sqlite`
+> or `data/report_latest.txt`.
+
 **Paper money only.** Nothing here can place a real order. There is no wallet, no private key,
 no live order adapter, no sign-up, no paid API and no paid model. Every decision is a fixed,
 deterministic rule. The book starts at **$1,000 of pretend money**.
@@ -220,3 +226,30 @@ time, and RugCheck and Gecko would rate-limit harder. Example cron line, which `
   trigger at any time. On error or SIGTERM it marks its `cycles` row `failed`.
 * **Loop** (`run_loop.sh`): `flock -n -E 75 data/.lock timeout -k 30 600 python -m memedesk run_cycle`.
   It logs a start line (with uptime, which helps spot box pauses) and an end line with the exit code.
+
+
+## Runner: GitHub Actions (since 2026-10-26)
+* **Where it runs:** `.github/workflows/cycle.yml`, cron `*/20 * * * *` plus manual `workflow_dispatch`,
+  concurrency group `desk` (never two cycles at once, never cancelled mid-cycle), job timeout 10 min,
+  cycle timeout 450 s. Each run: restore state -> integrity check -> `python -m memedesk run_cycle`
+  (same entry as the old `run_loop.sh`) -> `python -m memedesk report` -> integrity check -> push state.
+* **Host is recorded:** the run sets `MEMEDESK_HOST=github-actions`; it appears on the cron log lines
+  (`run_cycle start (..., host github-actions)`, `cycle N done ... host github-actions`) and in
+  `kv` as `cycle_host:<cycle id>`. The cycles table has no host column (unchanged schema). Timestamps are real.
+* **State:** orphan branch `state`, exactly one commit, force-pushed each run with a lease on the commit
+  the run started from (a second writer makes the push fail instead of overwriting). It holds
+  `memedesk.sqlite.gz` (every table; `snapshots` trimmed to the last 6 h of receipts, which covers
+  everything the live engine reads: this cycle's payloads and RugCheck reports <= 30 min old),
+  `report_latest.txt`, the last 5,000 lines of `cron.log`, and `STATE.json`.
+  Restore fails closed: no branch, a bad gzip, a failed `integrity_check` or a DB with 0 cycles stops the run.
+* **Full snapshot history** stays on the box: `data/archive/memedesk_full_pre_actions_20261026.sqlite`
+  (read-only copy at cutover, 773 snapshots) and `data/archive/snapshots_archive.sqlite`, which
+  `pull_state.sh` keeps appending to. Pull at least every ~5 h or older snapshots are lost.
+  Replay needs the archive DB, not the slim one. The report's "Snapshots stored" now counts the slim DB.
+* **Late/missed cycles:** GitHub's scheduler is best-effort. Runs are often 5-30+ min late and can be
+  skipped at busy times. Nothing is backfilled; delays show up as gaps in `cycles.started_at`.
+* **Box:** `run_loop.sh` is retired and refuses to start (override `MEMEDESK_ALLOW_BOX_LOOP=1`
+  only if Actions is disabled first). `pull_state.sh` installs the latest state atomically for
+  read-only consumers and refreshes `data/report_latest.txt`, `data/cron_actions.log` and `data/STATE.json`.
+* **Paper only:** no secrets, keys or wallets in the repo or the workflow; the only token used is
+  the run's own `GITHUB_TOKEN` (contents: write) to push the `state` branch.
