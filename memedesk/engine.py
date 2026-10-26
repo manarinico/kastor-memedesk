@@ -12,7 +12,7 @@ import statistics
 import time
 from dataclasses import dataclass
 
-from . import db, fills, gambler, risk, scout, spy
+from . import db, fills, gambler, nico, risk, scout, spy
 from .feed import DISCOVERY_KINDS
 from .gates import ALLOW, BLOCK, INSUFFICIENT, Gate, allow, block, insufficient, combine, num
 
@@ -238,6 +238,10 @@ def run_cycle(conn, cfg, feed, clock=None, mode="live", source_cycle_id=None, cr
     for book in db.BOOKS:
         db.kv_setdefault(conn, f"day_start_equity:{book}:{day}", equity(ctx, book)["equity"])
 
+    # 0. nico side book: seed the ledger position once (idempotent) BEFORE the open-position list
+    # is built, so its mint is priced this cycle even if it is not in the scan universe.
+    nico.seed(ctx)
+
     # 1. discovery ------------------------------------------------------------
     disc = ctx.fetch(feed.discover)
     cands, trending = {}, []
@@ -345,6 +349,10 @@ def run_cycle(conn, cfg, feed, clock=None, mode="live", source_cycle_id=None, cr
     blocked_mints = set()
     for p in db.open_positions(conn):
         v = view_for_position(p)
+        if p["book"] in db.SIDE_BOOKS:
+            # isolated side book: its own mark log + stop-only exit; no desk breaker applies
+            nico.on_cycle(ctx, p, v, close_position)
+            continue
         if v is None or v.price is None:
             reason = gambler.exit_reason(p, None, ctx.now(), cfg, p["bot"])
             ctx.decide(p["book"], p["bot"], p["mint"], p["symbol"], "exit",
@@ -503,8 +511,11 @@ def run_cycle(conn, cfg, feed, clock=None, mode="live", source_cycle_id=None, cr
                 nb += 1
 
     # 8. equity + timings ------------------------------------------------------
-    for book in db.BOOKS:
-        s = equity(ctx, book)
+    side = [b for b in db.SIDE_BOOKS
+            if conn.execute("SELECT 1 FROM positions WHERE book=? LIMIT 1", (b,)).fetchone()]
+    for book in list(db.BOOKS) + side:
+        start = cfg["start_book_usd"] if book in db.BOOKS else cfg[book]["start_book_usd"]
+        s = db.book_state(conn, book, start, cfg["costs"])
         conn.execute("INSERT INTO equity_history(cycle_id,ts,book,equity,cash,open_value,n_open,n_unpriced) "
                      "VALUES(?,?,?,?,?,?,?,?)", (ctx.cycle_id, ctx.now(), book, s["equity"], s["cash"],
                                                  s["open_value"], s["n_open"], s["n_unpriced"]))
@@ -525,6 +536,12 @@ def run_cycle(conn, cfg, feed, clock=None, mode="live", source_cycle_id=None, cr
                "active_wallets": len(active),
                "sources_failed": [f"{r.kind}: {r.error}" for r in disc if not r.ok],
                "fetch_budget_hit": ctx.budget_hit}
+    ns = nico.book_summary(conn, cfg)
+    if ns:
+        lo = [x["last"] for x in ns["positions"] if x["last"] and x["last"]["cycle_id"] == ctx.cycle_id]
+        summary["nico"] = {"equity": round(ns["equity"], 2), "start_usd": ns["start_usd"], "n_open": ns["n_open"],
+                           "this_cycle": [{k: (round(l[k], 4) if isinstance(l[k], float) and k != "observed_px" else l[k]) for k in ("event", "observed_px", "value_usd", "unrealized_usd",
+                                                             "to_stop_pct", "gap_s", "missed_slots")} for l in lo]}
     conn.execute("UPDATE cycles SET ended_at=?, status='done', timings=?, summary=? WHERE id=?",
                  (ctx.now(), json.dumps(timings), json.dumps(summary), ctx.cycle_id))
     return {"cycle_id": ctx.cycle_id, "timings": timings, "summary": summary}

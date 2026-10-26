@@ -9,7 +9,7 @@ import hashlib
 import json
 import os
 
-RULES_VERSION = "rules-2026.10.26-r7"  # r7: Scout gates v1.1 - Token-2022 transfer_fee (>0 bps or fee authority set = BLOCK) + transfer_restriction (permanentDelegate, transferHook program set, defaultAccountState frozen, nonTransferable, pausable, mintCloseAuthority = BLOCK); missing ext field = INSUFF (token2022_ext); r6: desk position caps (4% per token, 20% total open, Gambler+Spy); r2: re-price before entry, Gecko tracking pools 5->4; r3: baseline candidates re-priced too; r4: explicit already_holding gate; r5: equity = liquidation value (sell fill at mark liquidity)
+RULES_VERSION = "rules-2026.10.26-r8"  # r8: NICO-PICK v1.0 - isolated `nico` side book (seeded once from the committed ledger, stop-only, never enters; not in desk equity/exposure/breakers/scorecard); no change to Gambler/Spy/Scout/Risk/baseline rules; r7: Scout gates v1.1 - Token-2022 transfer_fee (>0 bps or fee authority set = BLOCK) + transfer_restriction (permanentDelegate, transferHook program set, defaultAccountState frozen, nonTransferable, pausable, mintCloseAuthority = BLOCK); missing ext field = INSUFF (token2022_ext); r6: desk position caps (4% per token, 20% total open, Gambler+Spy); r2: re-price before entry, Gecko tracking pools 5->4; r3: baseline candidates re-priced too; r4: explicit already_holding gate; r5: equity = liquidation value (sell fill at mark liquidity)
 
 DEFAULT_CONFIG = {
     "rules_version": RULES_VERSION,
@@ -81,6 +81,23 @@ DEFAULT_CONFIG = {
         "base_slippage_bps": 50.0,
         "impact_mult": 1.0,               # impact ~= size / (liquidity/2) * mult
         "latency_s": 3.0,                 # simulated decision->fill lag
+    },
+    "nico": {
+        # r8 NICO-PICK v1.0: the "Nico pick" side bet as an isolated paper book. Seeded once from
+        # seeds/nico_pick_ledger.json (verbatim copy of kastor-trades/nico_pick/ledger.json, sha pinned).
+        # Stop/TP/time stop come from the ledger (stop_trigger_px = -20% vs entry px; no TP; no time stop).
+        "enabled": True,
+        "start_book_usd": 500.0,          # own $500 line; NOT part of start_book_usd / desk equity
+        "seed_file": "seeds/nico_pick_ledger.json",
+        "seed_sha256": "8c3ad8e0631fd3a8912efdec43b8bb11eb477d0201e12100448be655ab6fe4b3",
+        "seed_link": {                    # from desk cycle 39 (run 40365897835), snapshot 845
+            "pair_address": "EFX34rwn4GTMfcq9HsNajcMma311UHJEZXBvSUiaYEaU",
+            "dex_id": "pumpswap",
+            "entry_snapshot_id": 845,
+            "source_cycle_id": 39,
+            "source_decision_id": 4204,
+        },
+        "schedule_slot_s": 1200,          # missed-slot accounting only (20-min schedule)
     },
     "http": {"timeout_s": 12.0},
 }

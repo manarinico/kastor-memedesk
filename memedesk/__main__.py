@@ -103,6 +103,12 @@ def _run_locked(a, out, _Killed):
     out(f"  candidates {s['candidates']}, priced {s['priced']}, Scout-approved {s['approved']}, "
         f"entries {s['entries']}, exits {s['exits']}, breaker trips {s['trips']}, active spy wallets {s['active_wallets']}")
     out(f"  desk book ${s['desk_equity']:,.2f} | baseline book ${s['baseline_equity']:,.2f}")
+    if s.get("nico"):
+        n = s["nico"]
+        for l in n["this_cycle"] or [{"event": "not logged this cycle"}]:
+            out(f"  nico side book (separate ${n['start_usd']:,.0f}, not desk): ${n['equity']:,.2f}, {n['n_open']} open; "
+                f"{l.get('event')} px {l.get('observed_px')} unrealized {l.get('unrealized_usd')} "
+                f"to-stop {l.get('to_stop_pct')}% gap {l.get('gap_s')}s missed slots {l.get('missed_slots')}")
     for b in s["desk_breakers"]:
         out(f"  breaker {b['name']}: {b['state']} {b['reason'] if b['state'] != 'ALLOW' else ''}")
     if s["sources_failed"]:

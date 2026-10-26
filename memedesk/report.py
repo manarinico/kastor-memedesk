@@ -3,7 +3,7 @@ import datetime as dt
 import json
 import statistics
 
-from . import db
+from . import db, nico
 
 try:
     from zoneinfo import ZoneInfo
@@ -75,6 +75,7 @@ def compute(conn, cfg):
     for book, bot in (("desk", "gambler"), ("desk", "spy"), ("baseline", "baseline")):
         out["bots"][bot] = bot_stats(conn, book, bot, cfg["costs"])
     out["desk_all"] = bot_stats(conn, "desk", costs=cfg["costs"])
+    out["nico"] = nico.book_summary(conn, cfg)  # isolated side book; never in desk/baseline numbers
     out["cycles"] = conn.execute("SELECT COUNT(*), MIN(started_at), MAX(started_at), "
                                  "SUM(status='running') FROM cycles").fetchone()
     out["trips"] = [dict(r) for r in conn.execute(
@@ -139,6 +140,7 @@ def render(d, cfg, title="MEMEDESK PAPER SCORECARD (paper money only)"):
                  f"cash {_m(s['cash'])}, {s['n_open']} open"
                  + (f" ({s['n_unpriced']} without a fresh price)" if s["n_unpriced"] else "")
                  + f", max drawdown {s['max_drawdown_pct']:.2f}%")
+    L += render_nico(d.get("nico"))
     L.append("")
     L.append("By bot:")
     for bot, s in d["bots"].items():
@@ -192,3 +194,31 @@ def render(d, cfg, title="MEMEDESK PAPER SCORECARD (paper money only)"):
         last = tm["last"]
         L.append(f"  last cycle: data age at entry check {last['data_age_at_entry_check_s']}, simulated fill lag {last['simulated_fill_lag_s']}")
     return "\n".join(L)
+
+
+def render_nico(n):
+    """Separate block for the isolated `nico` side book (NICO-PICK v1.0)."""
+    if not n:
+        return []
+    L = [f"NICO PICK (separate {_m(n['start_usd'])} paper line; NOT in desk equity, exposure, breakers or the "
+         f"$1,000 scorecard): book {_m(n['equity'])} ({(n['equity'] / n['start_usd'] - 1) * 100:+.2f}%), "
+         f"cash {_m(n['cash'])}, {n['n_open']} open"]
+    for x in n["positions"]:
+        p, sp, lo = x["position"], x["side"], x["last_obs"]
+        head = (f"  {p['symbol']} ({p['mint'][:6]}…) {p['status']}: entry {p['entry_px']:.8g} at {_fmt_ts(p['entry_ts'])}, "
+                f"cost {_m(p['entry_cost_usd'])}, stop trigger {sp.get('stop_trigger_px') or 0:.8g}, "
+                f"TP {sp.get('take_profit_px') or 'none'}, time stop {'per ledger' if sp.get('time_stop_ts') else 'none'}")
+        L.append(head)
+        if p["status"] == "closed":
+            L.append(f"    closed {_fmt_ts(p['exit_ts'])}: observed {p['exit_mid']:.8g} -> modeled fill {p['exit_px']:.8g}, "
+                     f"proceeds {_m(p['exit_proceeds_usd'])}, P&L {_m(p['pnl_usd'])} ({p['exit_reason']})")
+        elif lo:
+            L.append(f"    mark {lo['observed_px']:.8g} (cycle {lo['cycle_id']}, {_fmt_ts(lo['observed_ts'])}), "
+                     f"liquidation value {_m(lo['value_usd'])}, unrealized {_m(lo['unrealized_usd'])}, "
+                     f"price must fall {lo['to_stop_pct']:.1f}% more to trigger the stop")
+        else:
+            L.append("    no mark yet")
+        L.append(f"    cycles logged {x['cycles_logged']}, without a price {x['no_price_cycles']}, "
+                 f"implied missed 20-min slots {x['missed_slots']}, longest gap "
+                 + (f"{x['max_gap_s'] / 60:.0f} min" if x["max_gap_s"] else "n/a"))
+    return L

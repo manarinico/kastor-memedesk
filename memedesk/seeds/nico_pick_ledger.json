@@ -1,0 +1,26 @@
+{
+ "book": "Nico pick (paper, separate from $1,000 test)",
+ "approved_by": "Manari 2026-10-26 ~13:05 ET",
+ "symbol": "Fartcoin",
+ "mint": "42nvgmxdtEyHLD1qJUeTyexenLpCGoZsLfQPQnsdpump",
+ "source": "memedesk cycle 39 (GitHub run 40365897835), decision snapshot 845; Gambler entry ALLOW; desk opened same token 13:10:46 ET",
+ "signal": {
+  "h1_pct": 21.1,
+  "m5_pct": 16.28,
+  "buy_sell": 2.52,
+  "vol_h1_usd": 344044.89,
+  "liq_usd": 77494.11,
+  "pair_age_h": 1.9933333333333332
+ },
+ "entry_ts_et": "2026-10-26 13:10:46",
+ "entry_mid": 0.0008171,
+ "modeled_slip_frac": 0.0179,
+ "fee_usd": 1.5,
+ "network_usd": 0.05,
+ "entry_px": 0.0008317295271525152,
+ "qty": 599293.3805133488,
+ "cost_usd": 500.0,
+ "stop_trigger_px": 0.0006653836217220123,
+ "stop_rule": "-20% vs entry px, checked each cycle; fill at first observed price after trigger, minus costs (STANDARDS s3)",
+ "status": "open"
+}

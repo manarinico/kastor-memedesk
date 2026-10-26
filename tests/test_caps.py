@@ -47,7 +47,7 @@ def test_gambler_entry_skipped_by_total_cap(conn, feed, clock, cfg):
     r = conn.execute("SELECT state, reason_code, config_version FROM decisions "
                      "WHERE bot='gambler' AND stage='entry' AND mint='MINTA'").fetchone()
     assert (r[0], r[1]) == (BLOCK, "cap_total_20pct")
-    assert r[2] == cfg["version_tag"] and r[2].startswith("rules-2026.10.26-r7+")
+    assert r[2] == cfg["version_tag"] and r[2].startswith("rules-2026.10.26-r8+")
 
 
 def test_baseline_book_not_counted_toward_desk_caps(conn, feed, clock, cfg):

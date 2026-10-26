@@ -53,9 +53,21 @@ CREATE TABLE IF NOT EXISTS seen_events(
 CREATE TABLE IF NOT EXISTS marks(
   mint TEXT, pair_address TEXT, price_usd REAL, liquidity_usd REAL, observed_ts REAL,
   snapshot_id INTEGER, PRIMARY KEY(mint, pair_address));
+CREATE TABLE IF NOT EXISTS side_positions(
+  position_id INTEGER PRIMARY KEY, book TEXT, stop_trigger_px REAL, take_profit_px REAL,
+  time_stop_ts REAL, stop_rule TEXT, source TEXT, ledger_sha256 TEXT, seeded_cycle_id INTEGER,
+  seeded_at REAL, config_version TEXT);
+CREATE TABLE IF NOT EXISTS side_book_log(
+  id INTEGER PRIMARY KEY, cycle_id INTEGER, ts REAL, book TEXT, position_id INTEGER, mint TEXT,
+  event TEXT, observed_px REAL, observed_ts REAL, liquidity_usd REAL, snapshot_id INTEGER,
+  value_usd REAL, gross_value_usd REAL, unrealized_usd REAL, stop_trigger_px REAL, to_stop_pct REAL,
+  trigger_px REAL, modeled_fill_px REAL, gap_s REAL, missed_slots INTEGER, fill_flag TEXT,
+  details TEXT, config_version TEXT);
 """
 
 BOOKS = ("desk", "baseline")
+# Isolated side books (r8): own start balance, never in desk equity/exposure/breakers/scorecard.
+SIDE_BOOKS = ("nico",)
 
 
 def connect(path):

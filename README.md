@@ -178,6 +178,32 @@ has around 30+ closed trades, the comparison is noise and the report says so.
 Replay can only be as good as what was recorded. Prices exist only at cycle times
 (every 15–30 min), so intra-cycle stop-loss gaps aren't seen.
 
+## NICO-PICK side book (rules r8, 2026-10-26)
+
+A third, **isolated** paper book `nico` holds the "Nico pick" side bet (Fartcoin,
+`42nvgmxdtEyHLD1qJUeTyexenLpCGoZsLfQPQnsdpump`), approved by Manari 2026-10-26 ~13:05 ET.
+Paper only; it never opens anything new.
+
+- **Seed:** `memedesk/seeds/nico_pick_ledger.json` is a verbatim copy of `kastor-trades/nico_pick/ledger.json`.
+  Its sha256 is pinned in `config["nico"]["seed_sha256"]`, so it is part of the rules hash. On the first live cycle
+  at or after the entry time, one `positions` row (book/bot `nico`) is inserted with the ledger's own entry time
+  (13:10:46 ET), price, qty and costs. Seeding is idempotent (`proposal_key` plus `ON CONFLICT DO NOTHING`).
+  A tampered seed file is refused (`INSUFFICIENT_DATA nico_seed`). Replay never seeds.
+- **Separate $500 line:** `db.SIDE_BOOKS`. Desk equity, exposure caps, breakers and the $1,000 scorecard all filter
+  `book='desk'`, so the pick never enters them. Equity goes to `equity_history` as book `nico` (start $500).
+  The report shows it in its own "NICO PICK" block.
+- **Marked every cycle:** open positions' mints are always added to the `dex_tokens` price fetch, so the pick is
+  priced even when it is not in the scan universe. Each cycle writes one `side_book_log` row: `mark` (observed price
+  and time, liquidity, liquidation value after modeled sell costs, unrealized P&L, % fall left to the stop) or
+  `no_price`. Every row carries the gap since the last logged cycle and the implied missed 20-minute slots. Missed
+  cycles are never backfilled.
+- **Exit:** stop only. The trigger is `stop_trigger_px` 0.00066538 (−20% vs. entry px). There is no take-profit, no time
+  stop and no liquidity-drop exit; liquidity is only logged. The trigger checks the observed mid. The fill is the
+  same conservative model as the other books (`fills.sell` + `guard_sell`) at the **first executable observed price**,
+  which can be below the trigger after a gap. If a triggered stop can't be modeled (no liquidity), it stays pending
+  and fills at the next executable observation, whatever that price is. The trigger price and the modeled fill are
+  logged separately (`stop_filled`: `trigger_px`, `observed_px`, `modeled_fill_px`).
+
 ## Commands
 ```bash
 cd /workspace/memedesk
