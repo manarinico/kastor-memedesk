@@ -15,6 +15,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   cycle:
@@ -26,7 +27,13 @@ jobs:
       STATE_HOST: github-actions
       PYTHONUNBUFFERED: "1"
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    outputs:
+      start: ${{ steps.t0.outputs.start }}
     steps:
+      - name: Record start time
+        id: t0
+        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
@@ -80,3 +87,25 @@ jobs:
         if: steps.cycle.outputs.rc != '0'
         run: |
           echo "::error::run_cycle exited ${{ steps.cycle.outputs.rc }}"; tail -40 data/cron.log; exit 1
+
+  # Self-chain: GitHub cron is best-effort, so each run starts the next one ~20 min after it began.
+  # Cron above stays as a backup if the chain breaks. Skips if another run is already queued/running.
+  chain:
+    needs: cycle
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Wait out the 20-minute interval, then dispatch the next cycle
+        run: |
+          set -euo pipefail
+          start="${{ needs.cycle.outputs.start }}"; [ -n "$start" ] || start=$(date +%s)
+          wait=$(( start + 1200 - $(date +%s) )); [ "$wait" -gt 0 ] && sleep "$wait" || true
+          others=$(gh run list -R "$REPO" -w "desk cycle" -L 10 --json databaseId,status \
+            -q "[.[] | select(.databaseId != ${{ github.run_id }}) | select(.status==\"queued\" or .status==\"in_progress\" or .status==\"waiting\" or .status==\"pending\" or .status==\"requested\")] | length")
+          if [ "$others" -gt 0 ]; then echo "another run is queued/running ($others); not chaining"; exit 0; fi
+          gh workflow run "desk cycle" -R "$REPO" --ref "${{ github.ref_name }}"
+          echo "dispatched next cycle"
