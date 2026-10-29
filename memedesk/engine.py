@@ -197,6 +197,48 @@ def close_position(ctx, p, view, reason):
     return True
 
 
+def _executable(v):
+    return bool(v is not None and v.price and v.liq and v.liq > 0)
+
+
+def _unpriced_writeoff(ctx, p, v):
+    """r9 (Risk Desk, approved by Manari 2026-10-28): an open position with no executable price
+    (no pair returned, no price, or pool liquidity <= 0) for longer than risk.unpriced_writeoff_s is
+    closed at $0, tagged `unpriced_writeoff`. Missing data counts as a loss, never as a hold at an
+    old price. Applies to desk and baseline alike. Every cycle already re-requests each open
+    position's mint from DexScreener (direct token lookup), so no separate lookup is needed."""
+    if _executable(v):
+        return False
+    conn = ctx.conn
+    m = db.latest_mark(conn, p["mint"], p["pair_address"])
+    fallback = max(p["entry_ts"], m["observed_ts"] if (m and (m["liquidity_usd"] or 0) > 0) else 0)
+    last_ok = db.kv_get(conn, f"last_exec_ts:{p['id']}", fallback)
+    gap = ctx.now() - last_ok
+    if gap < ctx.cfg["risk"]["unpriced_writeoff_s"]:
+        return False
+    lk = conn.execute("SELECT id, ok, error, fetch_ts FROM snapshots WHERE kind='dex_tokens' AND key LIKE ? "
+                      "ORDER BY id DESC LIMIT 1", (f"%{p['mint']}%",)).fetchone()
+    last_lookup = dict(lk) if lk else None
+    reason = (f"unpriced_writeoff: no executable price for {gap / 3600:.1f}h "
+              f"(last mark liq {m['liquidity_usd'] if m else None}); valued at $0")
+    with db.txn(conn) as c:
+        cur = c.execute(
+            "UPDATE positions SET status='closed', exit_ts=?, exit_mid=?, exit_px=0, exit_proceeds_usd=0, "
+            "exit_fee_usd=0, exit_slip_usd=0, exit_reason=?, exit_snapshot_id=?, exit_config_version=?, pnl_usd=? "
+            "WHERE id=? AND status='open'",
+            (ctx.now(), m["price_usd"] if m else None, reason, lk["id"] if lk else None, ctx.ver,
+             -p["entry_cost_usd"], p["id"]))
+        if cur.rowcount != 1:
+            return False
+    ctx.decide(p["book"], p["bot"], p["mint"], p["symbol"], "exit",
+               allow("unpriced_writeoff", round(-p["entry_cost_usd"], 4), reason),
+               lk["id"] if lk else None,
+               details={"position_id": p["id"], "tag": "unpriced_writeoff", "entry_value_usd": p["entry_cost_usd"],
+                        "unpriced_s": gap, "last_executable_ts": last_ok, "last_mark": m, "last_lookup": last_lookup})
+    ctx.counts["exits"] += 1
+    return True
+
+
 def _cooldown_gate(ctx, book, bot, mint):
     r = ctx.conn.execute("SELECT MAX(exit_ts) FROM positions WHERE book=? AND bot=? AND mint=? AND status='closed'",
                          (book, bot, mint)).fetchone()[0]
@@ -284,6 +326,8 @@ def run_cycle(conn, cfg, feed, clock=None, mode="live", source_cycle_id=None, cr
         v = view_for_position(p)
         if v and v.price:
             db.update_mark(conn, p["mint"], p["pair_address"], v.price, v.liq, v.receipt_ts, v.sid)
+        if _executable(v):
+            db.kv_set(conn, f"last_exec_ts:{p['id']}", v.receipt_ts)
     checkpoint("prices")
 
     # 3. Scout hard gates ------------------------------------------------------
@@ -352,6 +396,8 @@ def run_cycle(conn, cfg, feed, clock=None, mode="live", source_cycle_id=None, cr
         if p["book"] in db.SIDE_BOOKS:
             # isolated side book: its own mark log + stop-only exit; no desk breaker applies
             nico.on_cycle(ctx, p, v, close_position)
+            continue
+        if _unpriced_writeoff(ctx, p, v):
             continue
         if v is None or v.price is None:
             reason = gambler.exit_reason(p, None, ctx.now(), cfg, p["bot"])

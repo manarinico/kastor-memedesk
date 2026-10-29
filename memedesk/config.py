@@ -9,11 +9,11 @@ import hashlib
 import json
 import os
 
-RULES_VERSION = "rules-2026.10.26-r8"  # r8: NICO-PICK v1.0 - isolated `nico` side book (seeded once from the committed ledger, stop-only, never enters; not in desk equity/exposure/breakers/scorecard); no change to Gambler/Spy/Scout/Risk/baseline rules; r7: Scout gates v1.1 - Token-2022 transfer_fee (>0 bps or fee authority set = BLOCK) + transfer_restriction (permanentDelegate, transferHook program set, defaultAccountState frozen, nonTransferable, pausable, mintCloseAuthority = BLOCK); missing ext field = INSUFF (token2022_ext); r6: desk position caps (4% per token, 20% total open, Gambler+Spy); r2: re-price before entry, Gecko tracking pools 5->4; r3: baseline candidates re-priced too; r4: explicit already_holding gate; r5: equity = liquidation value (sell fill at mark liquidity)
+RULES_VERSION = "rules-2026.10.28-r9"  # r9: unpriced write-off (Risk Desk fill model, Manari-approved) - open position with no executable price (no pair / no price / liquidity <= 0) for > 4h is closed at $0, tagged unpriced_writeoff, all books except the nico side book; r8: NICO-PICK v1.0 - isolated `nico` side book (seeded once from the committed ledger, stop-only, never enters; not in desk equity/exposure/breakers/scorecard); no change to Gambler/Spy/Scout/Risk/baseline rules; r7: Scout gates v1.1 - Token-2022 transfer_fee (>0 bps or fee authority set = BLOCK) + transfer_restriction (permanentDelegate, transferHook program set, defaultAccountState frozen, nonTransferable, pausable, mintCloseAuthority = BLOCK); missing ext field = INSUFF (token2022_ext); r6: desk position caps (4% per token, 20% total open, Gambler+Spy); r2: re-price before entry, Gecko tracking pools 5->4; r3: baseline candidates re-priced too; r4: explicit already_holding gate; r5: equity = liquidation value (sell fill at mark liquidity)
 
 DEFAULT_CONFIG = {
     "rules_version": RULES_VERSION,
-    "fill_model_version": "fill-guard-1",  # 2026-10-26: unreliable sells flagged, valued <= entry (fills.guard_sell)
+    "fill_model_version": "fill-guard-2",  # 2026-10-28: + unpriced_writeoff after 4h; was fill-guard-1:  # 2026-10-26: unreliable sells flagged, valued <= entry (fills.guard_sell)
     "start_book_usd": 1000.0,
     "chain": "solana",
     "scout": {
@@ -74,6 +74,7 @@ DEFAULT_CONFIG = {
         "consecutive_cooldown_min": 240.0,
         "liquidity_drop_pct": 40.0,       # vs liquidity at entry -> force exit + block
         "stale_feed_s": 120.0,
+        "unpriced_writeoff_s": 4 * 3600.0,  # r9: no executable price this long -> closed at $0 (unpriced_writeoff)
     },
     "costs": {
         "dex_fee_bps": 30.0,              # ~0.25-0.30% AMM fee
