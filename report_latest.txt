@@ -1,0 +1,53 @@
+MEMEDESK PAPER SCORECARD (paper money only)
+===========================================
+Cycles run: 399 (2026-10-25 10:11 EDT -> 2026-10-31 16:52 EDT)
+Rules version(s): rules-2026.10.25-r1+acef8772e5, rules-2026.10.25-r2+8737f1089d, rules-2026.10.25-r3+a222f0e5a7, rules-2026.10.25-r4+5af786f07e, rules-2026.10.25-r5+fda8792cb3, rules-2026.10.26-r6+d1ef4040cf, rules-2026.10.26-r7+1ed8a7417d, rules-2026.10.26-r8+261ef644dd, rules-2026.10.28-r9+525c2a8ed4
+Snapshots stored: 432 (32 failed fetches kept as evidence)
+
+DESK (Gambler + Spy): book $743.53 from $1,000.00 (-25.65%), cash $743.53, 0 open, max drawdown 25.80%
+BASELINE (same momentum rule, no safety filters): book $323.76 from $1,000.00 (-67.62%), cash $293.19, 5 open, max drawdown 68.60%
+NICO PICK (separate $500.00 paper line; NOT in desk equity, exposure, breakers or the $1,000 scorecard): book $379.84 (-24.03%), cash $379.84, 0 open
+  Fartcoin (42nvgm…) closed: entry 0.00083172953 at 2026-10-26 13:10 EDT, cost $500.00, stop trigger 0.00066538362, TP none, time stop none
+    closed 2026-10-26 13:34 EDT: observed 0.0006463 -> modeled fill 0.00063579647, proceeds $379.84, P&L $-120.16 (stop_loss trigger 0.00066538362 (-20% vs entry px 0.00083172953); first executable observed px 0.0006463 (-22.3% vs entry px))
+    cycles logged 1, without a price 0, implied missed 20-min slots 0, longest gap 24 min
+
+By bot:
+  gambler   closed 100 | open 0 | win rate 27.0% | realized $-250.29 | unrealized $0.00 | costs $38.01 | turnover $3,207.69 | median hold 41m (mean 1.3h)
+            exits: {'stop_loss': 62, 'take_profit': 24, 'time_stop': 9, 'liquidity_drop_breaker': 5}
+  spy       closed   2 | open 0 | win rate 0.0% | realized $-6.18 | unrealized $0.00 | costs $0.91 | turnover $73.91 | median hold 1.8h (mean 1.8h)
+            exits: {'mirror_exit': 1, 'stop_loss': 1}
+  baseline  closed 232 | open 5 | win rate 28.4% | realized $-674.57 | unrealized $-1.66 | costs $352.52 | turnover $4,628.03 | median hold 41m (mean 2.4h)
+            exits: {'stop_loss': 116, 'take_profit': 82, 'time_stop': 17, 'unpriced_writeoff': 17}
+            concentration: top 3 trades = 5% of absolute realized P&L; realized without best trade = $-698.43
+  Concentration: top 3 desk trades = 9% of absolute realized P&L; realized without the best trade = $-267.62
+
+Do the filters add anything? Gambler (with Scout + breakers) vs Baseline (no filters):
+  trades 100+0 open vs 232+5 open; P&L $-250.29 vs $-676.24; win rate 27.0% vs 28.4%; desk DD 25.80% vs baseline DD 68.60%
+
+Circuit breaker trips: consecutive_losses x143, daily_loss x44, liquidity_drop x5, stale_feed x3
+  consecutive_losses: last 2026-10-31 16:54 EDT e.g. BLOCK: 9 losses in a row; cooling down (81/240 min)
+  daily_loss: last 2026-10-30 17:02 EDT e.g. BLOCK: day P&L -6.12% <= -5.0%
+  liquidity_drop: last 2026-10-30 15:02 EDT e.g. liquidity fell 97.1% since entry
+  stale_feed: last 2026-10-26 07:44 EDT e.g. BLOCK: data is 679s old > 120s
+
+Scout: ALLOW 4158 (11%, 323 tokens), BLOCK 22216 (60%, 9216 tokens), INSUFFICIENT_DATA 10519 (29%, 5191 tokens)
+Top rejection reasons:
+  min_age                  BLOCK             x8308 (8086 tokens)  e.g. pair age 9m < 30m
+  max_age                  BLOCK             x6892 (179 tokens)  e.g. pair age 99h > 72h (not a fresh launch)
+  min_liquidity            BLOCK             x6500 (1224 tokens)  e.g. liquidity $976 < $20,000
+  min_liquidity            INSUFFICIENT_DATA x5749 (1092 tokens)  e.g. liquidity missing
+  pair_data                INSUFFICIENT_DATA x4375 (4061 tokens)  e.g. no DexScreener pair for token
+  rugcheck                 INSUFFICIENT_DATA x 365 (34 tokens)  e.g. no RugCheck report
+  top10_share              BLOCK             x 365 (40 tokens)  e.g. top-10 holders own 91.6% >= 30%
+  lp_locked                BLOCK             x 131 (19 tokens)  e.g. LP locked/burned 94% < 95%
+Entry skips (desk): gambler/desk_breakers BLOCK x2204; gambler/momentum BLOCK x1741; gambler/already_holding BLOCK x34; gambler/reentry_cooldown BLOCK x26; gambler/momentum INSUFFICIENT_DATA x20; gambler/min_liquidity BLOCK x17; spy/desk_breakers BLOCK x6; spy/leader_exited BLOCK x6
+
+Spy wallets: {'active': 8}
+  1T5bSj2uLb… active   src=gecko_trades_window window-realized=$162.22 copies=2 W/L=0/2 streak-losses=2
+  6LdX4CNZd2… active   src=gecko_trades_window window-realized=$620.52 copies=0 W/L=0/0 streak-losses=0
+  ChP6qNP6Xp… active   src=gecko_trades_window window-realized=$546.59 copies=0 W/L=0/0 streak-losses=0
+  DWtamXNnNW… active   src=gecko_trades_window window-realized=$257.29 copies=0 W/L=0/0 streak-losses=0
+  whamNNP9tH… active   src=gecko_trades_window window-realized=$220.54 copies=0 W/L=0/0 streak-losses=0
+
+Timing: median cycle 62.525s (fetch 61.905s, decide 0.148s)
+  last cycle: data age at entry check {'n': 13, 'median': 0.0, 'max': 0.0}, simulated fill lag {'n': 2, 'median': 3.01, 'max': 3.01}
