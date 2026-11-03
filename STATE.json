@@ -1,0 +1,22 @@
+{
+ "last_cycle": 593,
+ "started_at": 1793714866.9225402,
+ "ended_at": 1793714925.1806827,
+ "status": "done",
+ "rules": "rules-2026.10.28-r9+525c2a8ed4",
+ "equity": {
+  "desk": 673.2034423723217,
+  "baseline": 152.07108768216276,
+  "nico": 379.8355317960746
+ },
+ "snapshots_kept": 408,
+ "snapshot_id_range": [
+  13046,
+  13453
+ ],
+ "db_sha256": "2211ace94e2fbe7a3d856bd45053fa5e3a91eabed83ad3ddbc5fab61b540ff76",
+ "host": "github-actions",
+ "pushed_at_utc": "2026-11-03T14:08:49Z",
+ "run_url": "https://github.com/manarinico/kastor-memedesk/actions/runs/41650608005",
+ "paper_only": true
+}
